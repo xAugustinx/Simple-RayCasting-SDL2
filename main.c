@@ -9,7 +9,7 @@ int turnOn = 1;
 
 int tablica[20][20];
 
-int tablicaDoRenderowania[20][10][3];
+int tablicaDoRenderowania[20][20][3];
 
 
 int tablica2D[20][20][3];
@@ -45,19 +45,16 @@ void nowyKlocek() {
 }
 
 void * obliczeniaMatematyczne() {
-
-
-
     while (turnOn) {
         for (int i = 0; i < 20; i++ ) {for (int j = 0; j < 20; j++ ) {for (int z = 0; z < 3; z++) {tablica2D[i][j][z] = 0;}}}
 
-        for (int i = -5; i < 5; i++)
+        for (int i = -10; i < 10; i++)
         {
             float pozycjeStartowe[2] = {gracz[0], gracz[1]};
             float colorDoTablicy = 255;
 
-            float stepX = cos(gracz[2] + (i * 0.1));
-            float stepY = sin(gracz[2] + (i * 0.1));
+            float stepX = (float)cos(gracz[2] + ((float)i/2 * 0.1));
+            float stepY = (float)sin(gracz[2] + ((float)i/2 * 0.1));
 
 
             int wysokoscTimer = 1;
@@ -71,14 +68,14 @@ void * obliczeniaMatematyczne() {
                 pozycjeStartowe[1] += stepX;
 
                 colorDoTablicy+= -2;
-                
+
                 for (int y = 0; y < 3; y++) {tablica2D[(int)pozycjeStartowe[0]/10][(int)pozycjeStartowe[1]/10][y] = colorDoTablicy;}
                 if (wysokoscTimer < 200) { wysokoscTimer++;}
             }
             int wysokosc = ((wysokoscTimer / 10) - 20 ) * -1 +1;
-            for (int y = 0; y < 20; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+5)][z] = 0;}}
-            for (int y = (20 - wysokosc)/2 ; y < (20 + wysokosc)/2; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+5)][z] = colorDoTablicy;}}
+            for (int y = 0; y < 20; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+10)][z] = 0;}}
 
+            for (int y = (20 - wysokosc)/2 ; y < (20 + wysokosc)/2; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+10)][z] = colorDoTablicy;}}
         }
 
         for (int y = 0; y < 20; y++) {
@@ -113,7 +110,7 @@ void *renderowanie() {
         for (int x = 0; x < 20; x++) {
             for (int y = 0; y < 20; y++) {
                 if (renderingMode == 1) {
-                    SDL_SetRenderDrawColor(meowRender,tablicaDoRenderowania[y][  (int)floor(x/2) ][0],tablicaDoRenderowania[y][(int)floor(x/2)][1],tablicaDoRenderowania[y][(int)floor(x/2)][2],0  );
+                    SDL_SetRenderDrawColor(meowRender,tablicaDoRenderowania[y][  x ][0],tablicaDoRenderowania[y][x][1],tablicaDoRenderowania[y][x][2],0  );
                     SDL_RenderDrawPoint(meowRender,x,y);
                 }
                 else {
@@ -141,15 +138,13 @@ void *renderowanie() {
                         int mango67Two = (int)((gracz[1] + cos(gracz[2]) * inputNaLiczby[1][x]   ) / 10 )  ;
 
                         if (!tablica[mango67One][mango67Two] ) {
-
                             gracz[0] += (float)sin(gracz[2]) * inputNaLiczby[1][x] ;
                             gracz[1] += (float)cos(gracz[2]) * inputNaLiczby[1][x] ;
-
                             break;
                         }
                     }
                 }
-                printf("%f%c%f%c%f\n",gracz[0],' ',gracz[1],' ',gracz[2]);
+                printf("%d%c%d%c%f\n",(int)gracz[0],' ',(int)gracz[1],' ',gracz[2]);
             }
         }
         SDL_RenderPresent(meowRender);
