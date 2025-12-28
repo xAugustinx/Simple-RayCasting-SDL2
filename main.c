@@ -59,28 +59,21 @@ void * obliczeniaMatematyczne() {
             float stepX = cos(gracz[2] + (i * 0.1));
             float stepY = sin(gracz[2] + (i * 0.1));
 
-            int timer = 0;
+
             int wysokoscTimer = 1;
 
             while (1) {
 
                 if (pozycjeStartowe[0] >= 200 || pozycjeStartowe[1] >= 200 || pozycjeStartowe[0] <= 0 || pozycjeStartowe[1] <= 0 || colorDoTablicy < 0   ) { colorDoTablicy = 0;  break;}
-                else if (tablica[ (int)round(pozycjeStartowe[0]/10) ][  (int)round(pozycjeStartowe[1]/10) ] != 0  ) { break;}
+                else if (tablica[ (int)floor(pozycjeStartowe[0]/10) ][  (int)floor(pozycjeStartowe[1]/10) ] != 0  ) { break;}
 
-                if (timer) {pozycjeStartowe[0] += stepY;}
-                else { pozycjeStartowe[1] += stepX ;}
-                colorDoTablicy+= -1;
-                timer++;
-                if (timer > 1) { timer = 0;}
+                pozycjeStartowe[0] += stepY;
+                pozycjeStartowe[1] += stepX;
 
-
-                for (int y = 0; y < 3; y++)
-                    {tablica2D[(int)pozycjeStartowe[0]/10][(int)pozycjeStartowe[1]/10][y] = colorDoTablicy;}
-
-
-                if (wysokoscTimer < 200) {
-                    wysokoscTimer++;
-                }
+                colorDoTablicy+= -2;
+                
+                for (int y = 0; y < 3; y++) {tablica2D[(int)pozycjeStartowe[0]/10][(int)pozycjeStartowe[1]/10][y] = colorDoTablicy;}
+                if (wysokoscTimer < 200) { wysokoscTimer++;}
             }
             int wysokosc = ((wysokoscTimer / 10) - 20 ) * -1 +1;
             for (int y = 0; y < 20; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+5)][z] = 0;}}
