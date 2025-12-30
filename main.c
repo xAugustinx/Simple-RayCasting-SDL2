@@ -52,6 +52,19 @@ void nowyPociskFunkcja() {
     czyDodacnowyPociskNaListe = 1;
 }
 
+
+void zapisanieMapy() {
+    FILE * mapaWrite = fopen("map","w");
+    fseek(mapaWrite, 0, SEEK_SET);
+
+    for (int y = 0; y < rozdzielczosc; y++) {
+        for (int x = 0; x < rozdzielczosc; x++) {
+            fprintf(mapaWrite,"%d", 0);
+        }
+    }
+
+}
+
 void * obliczeniaMatematyczne() {
     SDL_Rect musztardaDymczasowa = { -1, -1, -1, -1 };
     for (char i = 0; i < 64; i++ ) {femboyTable[i][0] = musztardaDymczasowa; pociskiZBroni[i] = pustyPocisk; }
@@ -265,7 +278,7 @@ void *renderowanie() {
                 if (meowEvent.key.keysym.sym == SDLK_ESCAPE ) {turnOn = 0;}
                 else if (meowEvent.key.keysym.sym == SDLK_a) {gracz[2] -= 0.15; if (gracz[2] < 0) { gracz[2] = 6.283;   };}
                 else if (meowEvent.key.keysym.sym == SDLK_d) {gracz[2] += 0.15;   if (gracz[2] > 6.3) { gracz[2] = 0;   };}
-                else if (meowEvent.key.keysym.sym == SDLK_SPACE && !czyDodacnowyPociskNaListe) { nowyPociskFunkcja(); }
+                else if (meowEvent.key.keysym.sym == SDLK_SPACE && !czyDodacnowyPociskNaListe  && wyznaczonyPocisk < 63) { nowyPociskFunkcja(); }
 
                 else if (meowEvent.key.keysym.sym == SDLK_r) { renderingMode *= -1;  }
                 for (int x = 0; x < 2; x++) {
