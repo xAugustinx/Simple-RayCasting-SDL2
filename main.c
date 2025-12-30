@@ -8,13 +8,18 @@
 #define standardowePrzyspieszeniePocisku -0.03;
 #define standardowaPredkoscPocisku 2
 
-
 #define timeOf 16
 
 int turnOn = 1;
-unsigned char tablica[rozdzielczosc][rozdzielczosc];
+//unsigned char tablica[rozdzielczosc][rozdzielczosc];
 unsigned char tablicaDoRenderowania[rozdzielczosc][rozdzielczosc][3];
 unsigned char tablica2D[rozdzielczosc][rozdzielczosc][3];
+
+typedef struct {short y; short x; unsigned char type;   } obiekt ;
+
+obiekt * tablicaElementowNaPlanszy;
+
+int liczbaElementowNaCalejTablicy = 5;
 
 typedef struct  {float przyspieszenie;float predkosc;float kierunek;float y;float x; int time; } pocisk;
 pocisk pociskiZBroni[64];
@@ -38,6 +43,37 @@ int inputNaLiczby[2][2] = {{SDLK_w,SDLK_s},{1   ,-1 }};
 int czyDodacnowyPociskNaListe = 0;
 
 pocisk nowyPocisk;
+
+int czyWartoscJestNaLiscie(int yD, int xD ) {
+    int czyZwrocicFalse = 0;
+
+    for (int i = 1; i <  liczbaElementowNaCalejTablicy; i++) {
+        if (tablicaElementowNaPlanszy[i].y == yD && tablicaElementowNaPlanszy[i].x == xD     ) {
+            return tablicaElementowNaPlanszy[i].type;
+        }
+    }
+    return 0;
+}
+int usuwanieZListy(int yD, int xD  ) {
+    int poszukiwany = -1;
+
+    for (int i = 1; i <  liczbaElementowNaCalejTablicy; i++)
+    {
+        if (tablicaElementowNaPlanszy[i].y == yD && tablicaElementowNaPlanszy[i].x == xD   )
+        {poszukiwany = i;break;}
+    }
+    if (poszukiwany == -1) {return 0;}
+
+    for (int i = poszukiwany; i <  liczbaElementowNaCalejTablicy-1; i++) {
+        tablicaElementowNaPlanszy[i] = tablicaElementowNaPlanszy[i+1];
+    }
+    liczbaElementowNaCalejTablicy--;
+
+    obiekt *tymczasowy = realloc(tablicaElementowNaPlanszy, liczbaElementowNaCalejTablicy * sizeof(obiekt));
+    tablicaElementowNaPlanszy = tymczasowy;
+
+    return poszukiwany;
+}
 
 
 void nowyPociskFunkcja() {
@@ -134,8 +170,8 @@ void * obliczeniaMatematyczne() {
             while (1) {
 
                 if (pozycjeStartowe[0] >= rozdzielczosc*10 || pozycjeStartowe[1] >= rozdzielczosc*10 || pozycjeStartowe[0] <= 0 || pozycjeStartowe[1] <= 0 || colorDoTablicy < 0   ) { colorDoTablicy = 0;  break;}
-                else if (tablica[ (int)floor(pozycjeStartowe[0]/10) ][  (int)floor(pozycjeStartowe[1]/10) ] == 1  ) { break;}
-                else if (tablica[ (int)floor(pozycjeStartowe[0]/10) ][  (int)floor(pozycjeStartowe[1]/10) ] == 2  ) {
+                else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) )  == 1  ) { break;}
+                else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) ) == 2  ) {
                     czyDwa = 1;  czyZnalazlSieDwaWOguleWcalym = 1; colorSaturationNaZaznaczonym2 =  (int)colorDoTablicy; break;
                 }
 
@@ -204,8 +240,8 @@ void * obliczeniaMatematyczne() {
 
         for (int y = 0; y < rozdzielczosc; y++) {
             for (int x = 0; x < rozdzielczosc; x++) {
-                if (tablica[y][x] == 1) {tablica2D[y][x][0] = 209;tablica2D[y][x][1] = 195;tablica2D[y][x][2] = 0;}
-                else if  (tablica[y][x] == 2) {tablica2D[y][x][0] = 255;tablica2D[y][x][1] = 18;tablica2D[y][x][2] = 188;}
+                if (czyWartoscJestNaLiscie(y, x) == 1) {tablica2D[y][x][0] = 209;tablica2D[y][x][1] = 195;tablica2D[y][x][2] = 0;}
+                else if  (czyWartoscJestNaLiscie(y, x) == 2 ) {tablica2D[y][x][0] = 255;tablica2D[y][x][1] = 18;tablica2D[y][x][2] = 188;}
             }
         }
         tablica2D[ (int)gracz[0]/10 ][(int)gracz[1]/10][0] = 255; tablica2D[ (int)gracz[0]/10 ][(int)gracz[1]/10][1] = 0; tablica2D[ (int)gracz[0]/10 ][(int)gracz[1]/10][2] = 0;
@@ -228,9 +264,9 @@ void * obliczeniaMatematyczne() {
                 int yMeow = (int) ( pociskiZBroni[i].y -  sin(pociskiZBroni[i].kierunek)   )  / 10;
                 int xMeow = (int) ( pociskiZBroni[i].x - cos(pociskiZBroni[i].kierunek) )  / 10;
 
-                if (  tablica [yMeow ] [xMeow ] != 0 ) {
-                    tablica[yMeow][xMeow] = 0;
+                if (  czyWartoscJestNaLiscie(yMeow,xMeow) != 0 ) {
                     pociskiZBroni[i] = pustyPocisk;
+                    usuwanieZListy(yMeow,xMeow);
                 }
 
             }
@@ -251,8 +287,10 @@ void *renderowanie() {
 
     IMG_Init(IMG_INIT_PNG);
     SDL_Texture* bron = IMG_LoadTexture(meowRender,"bronPalna.png");
-
     SDL_Rect miejsceBroni = { 130, 260, 60, 60};
+
+
+
 
     while (turnOn) {
         if (renderingMode == 1) {
@@ -286,7 +324,7 @@ void *renderowanie() {
                         int mango67One = (int)((gracz[0] + sin(gracz[2]) * inputNaLiczby[1][x]        ) / 10 ) ;
                         int mango67Two = (int)((gracz[1] + cos(gracz[2]) * inputNaLiczby[1][x]   ) / 10 )  ;
 
-                        if (!tablica[mango67One][mango67Two] ) {
+                        if (!czyWartoscJestNaLiscie(mango67One,mango67Two) ) {
                             gracz[0] += (float)sin(gracz[2]) * inputNaLiczby[1][x] ;
                             gracz[1] += (float)cos(gracz[2]) * inputNaLiczby[1][x] ;
                             break;
@@ -308,12 +346,18 @@ void *renderowanie() {
 }
 
 int main() {
-    for (int y = 0; y < rozdzielczosc; y++) { for (int x = 0; x < rozdzielczosc; x++) { tablica[y][x] = 0; }}
+    for (int y = 0; y < rozdzielczosc; y++) { for (int x = 0; x < rozdzielczosc; x++) {  }}
+    tablicaElementowNaPlanszy = (obiekt*) malloc( liczbaElementowNaCalejTablicy * sizeof(obiekt));
 
-    tablica[5][10] = 1;
-    tablica[15][10] = 2;
-    tablica[15][11] = 2;
-    tablica[15][12] = 2;
+
+    tablicaElementowNaPlanszy[1].y = 5;
+    tablicaElementowNaPlanszy[1].x = 10;
+    tablicaElementowNaPlanszy[1].type = 2;
+    for (unsigned char i = 0; i < 3; i++) {
+        tablicaElementowNaPlanszy[i+2].y = 15;
+        tablicaElementowNaPlanszy[i+2].x = 9 + i;
+        tablicaElementowNaPlanszy[i+2].type = 1;
+    }
 
     pthread_t matematyka;
     pthread_t wyswietlanie;
@@ -324,5 +368,6 @@ int main() {
     pthread_detach(matematyka);
     pthread_detach(wyswietlanie);
     while (turnOn) { SDL_Delay(250);  }
+    free(tablicaElementowNaPlanszy);
 
 }
