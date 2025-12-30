@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL_image.h>
 #define rozdzielczosc 320
-#define standardowePrzyspieszeniePocisku -0.03;
+#define standardowePrzyspieszeniePocisku -0.05;
 #define standardowaPredkoscPocisku 2
 
 #define timeOf 16
@@ -21,7 +21,7 @@ obiekt * tablicaElementowNaPlanszy;
 
 int liczbaElementowNaCalejTablicy = 5;
 
-typedef struct  {float przyspieszenie;float predkosc;float kierunek;float y;float x; int time; } pocisk;
+typedef struct  {float przyspieszenie;float predkosc;float kierunek;float y;float x; int time; char mode; } pocisk;
 pocisk pociskiZBroni[64];
 unsigned char wyznaczonyPocisk = 0;
 SDL_Rect femboyTable[64][2];
@@ -38,6 +38,13 @@ float renderingMode = 1;
 
 int nygasColors[2];
 int inputNaLiczby[2][2] = {{SDLK_w,SDLK_s},{1   ,-1 }};
+
+int typeOf = 1;
+
+
+SDL_KeyCode listaZnakow[10] = {SDLK_0,SDLK_1,SDLK_2,SDLK_3,SDLK_4,SDLK_5,SDLK_6,SDLK_7,SDLK_8,SDLK_9 };
+
+unsigned char czyPostawicKloca = 0;
 
 
 int czyDodacnowyPociskNaListe = 0;
@@ -74,9 +81,25 @@ int usuwanieZListy(int yD, int xD  ) {
 
     return poszukiwany;
 }
+int nowyNaListe(int yD, int xD, int typ) {
+    liczbaElementowNaCalejTablicy++;
+    obiekt *tymczasowy = realloc(tablicaElementowNaPlanszy, liczbaElementowNaCalejTablicy * sizeof(obiekt));
+    tablicaElementowNaPlanszy = tymczasowy;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].y = yD;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].x = xD;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].type = typ;
+}
+
+int budowanie(int z) {
+    int nowyY = (int)gracz[0]/10 + sin(gracz[2]) * 3;
+    int nowyX = (int)gracz[1]/10 + cos(gracz[2]) * 3;
+
+    nowyNaListe(nowyY,nowyX, z);
+
+}
 
 
-void nowyPociskFunkcja() {
+int nowyPociskFunkcja(char mango) {
     nowyPocisk.time = 0;
     nowyPocisk.kierunek = gracz[2];
     nowyPocisk.y = gracz[0];
@@ -85,6 +108,8 @@ void nowyPociskFunkcja() {
     nowyPocisk.predkosc = standardowaPredkoscPocisku;
     nowyPocisk.przyspieszenie = standardowaPredkoscPocisku;
 
+
+    nowyPocisk.mode = mango;
     czyDodacnowyPociskNaListe = 1;
 }
 
@@ -122,6 +147,10 @@ void * obliczeniaMatematyczne() {
                 listaWyznaczonychDoUsuniecia[ktoryZaznaczyc] = i;
                 ktoryZaznaczyc++;
                 wyznaczonyPocisk--;
+                printf("koniec %f %f \n", pociskiZBroni[i].y, pociskiZBroni[i].x);
+                if (pociskiZBroni[i].predkosc <= 0 && pociskiZBroni[i].mode == 1) {
+                    nowyNaListe((int)pociskiZBroni[i].y/10,(int)pociskiZBroni[i].x / 10, 1);
+                }
             }
         }
         for (char i = ktoryZaznaczyc-1; i >= 0; i--) {
@@ -194,8 +223,22 @@ void * obliczeniaMatematyczne() {
             }
 
             int wysokosc = (int)((wysokoscTimer * (rozdzielczosc * 0.01) ) - rozdzielczosc ) * -1 +1;
-            for (int y = 0; y < rozdzielczosc; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = 0;}}
 
+            unsigned char koloryTla[] = {237, 40, 40};
+
+            for (int y = 0; y < rozdzielczosc/2; y++) {
+                for (int z = 0; z < 3; z++) {
+                    tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = koloryTla[z];
+                    if (koloryTla[z] > 0) { koloryTla[z] = koloryTla[z] - koloryTla[z]/30;  }
+                }
+            }
+
+            koloryTla[0] = 237; koloryTla[1] = 40; koloryTla[2] = 40;
+
+            for (int y = rozdzielczosc; y > rozdzielczosc/2; y--) { for (int z = 0; z < 3; z++) {
+                tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = koloryTla[z];
+                if (koloryTla[z] > 0) { koloryTla[z] = koloryTla[z] - koloryTla[z]/30;  }
+            }}
 
             int czyGraniczyZeSobaInnaTekstura = 0;
             if (czyTexture  &&  ((int)floor(pozycjeStartowe[0]/10) != miejsceNaTeksture[4] || (int)floor(pozycjeStartowe[1]/10) != miejsceNaTeksture[5]) ) {czyDwa = 0;}
@@ -212,7 +255,7 @@ void * obliczeniaMatematyczne() {
 
             }
             else if (czyTexture && !czyDwa || czyDwa && i == rozdzielczosc/2 -1) {
-                  czyTexture = 0;
+                czyTexture = 0;
 
                 miejsceNaTeksture[2] = wysokosc;
                 miejsceNaTeksture[3] = i+(rozdzielczosc/2);
@@ -264,12 +307,17 @@ void * obliczeniaMatematyczne() {
                 int yMeow = (int) ( pociskiZBroni[i].y -  sin(pociskiZBroni[i].kierunek)   )  / 10;
                 int xMeow = (int) ( pociskiZBroni[i].x - cos(pociskiZBroni[i].kierunek) )  / 10;
 
-                if (  czyWartoscJestNaLiscie(yMeow,xMeow) != 0 ) {
+                if (  czyWartoscJestNaLiscie(yMeow,xMeow) != 0 && pociskiZBroni[i].mode == 0 ) {
                     pociskiZBroni[i] = pustyPocisk;
                     usuwanieZListy(yMeow,xMeow);
                 }
-
             }
+        }
+
+
+        if (czyPostawicKloca) {
+            budowanie(typeOf);
+            czyPostawicKloca = 0;
         }
 
 
@@ -316,9 +364,9 @@ void *renderowanie() {
                 if (meowEvent.key.keysym.sym == SDLK_ESCAPE ) {turnOn = 0;}
                 else if (meowEvent.key.keysym.sym == SDLK_a) {gracz[2] -= 0.15; if (gracz[2] < 0) { gracz[2] = 6.283;   };}
                 else if (meowEvent.key.keysym.sym == SDLK_d) {gracz[2] += 0.15;   if (gracz[2] > 6.3) { gracz[2] = 0;   };}
-                else if (meowEvent.key.keysym.sym == SDLK_SPACE && !czyDodacnowyPociskNaListe  && wyznaczonyPocisk < 63) { nowyPociskFunkcja(); }
-
-                else if (meowEvent.key.keysym.sym == SDLK_r) { renderingMode *= -1;  }
+                else if (meowEvent.key.keysym.sym == SDLK_SPACE && !czyDodacnowyPociskNaListe  && wyznaczonyPocisk < 63) { nowyPociskFunkcja(0); }
+                else if (meowEvent.key.keysym.sym == SDLK_n) { czyPostawicKloca = 1; }
+                else if (meowEvent.key.keysym.sym == SDLK_m) { renderingMode *= -1;  }
                 for (int x = 0; x < 2; x++) {
                     if (meowEvent.key.keysym.sym == inputNaLiczby[0][x]) {
                         int mango67One = (int)((gracz[0] + sin(gracz[2]) * inputNaLiczby[1][x]        ) / 10 ) ;
@@ -329,6 +377,11 @@ void *renderowanie() {
                             gracz[1] += (float)cos(gracz[2]) * inputNaLiczby[1][x] ;
                             break;
                         }
+                    }
+                }
+                for (char i = 0; i < 10; i++) {
+                    if (meowEvent.key.keysym.sym == listaZnakow[i]   ) {
+                        typeOf = i;
                     }
                 }
             }
@@ -345,14 +398,14 @@ void *renderowanie() {
     SDL_Quit();
 }
 
-int main() {
+void main() {
     for (int y = 0; y < rozdzielczosc; y++) { for (int x = 0; x < rozdzielczosc; x++) {  }}
     tablicaElementowNaPlanszy = (obiekt*) malloc( liczbaElementowNaCalejTablicy * sizeof(obiekt));
 
 
     tablicaElementowNaPlanszy[1].y = 5;
     tablicaElementowNaPlanszy[1].x = 10;
-    tablicaElementowNaPlanszy[1].type = 2;
+    tablicaElementowNaPlanszy[1].type = 1;
     for (unsigned char i = 0; i < 3; i++) {
         tablicaElementowNaPlanszy[i+2].y = 15;
         tablicaElementowNaPlanszy[i+2].x = 9 + i;
