@@ -2,20 +2,25 @@
 #include <SDL2/SDL.h>
 #include <math.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <SDL2/SDL_image.h>
+#include <stdlib.h>
+
 #define rozdzielczosc 320
 #define windowRealResolutnion 800
 
 #define standardowePrzyspieszeniePocisku -0.05;
 #define standardowaPredkoscPocisku 2
-
 #define timeOf 16
+
+
+int czySmiercOdWrogow = 1;
 
 int turnOn = 1;
 unsigned char tablicaDoRenderowania[rozdzielczosc][rozdzielczosc][3];
 unsigned char tablica2D[rozdzielczosc][rozdzielczosc][3];
 
-typedef struct {short y; short x; unsigned char type;   } obiekt ;
+typedef struct {float y; float x; unsigned char type; long id; float kierunek;  } obiekt ;
 
 obiekt * tablicaElementowNaPlanszy;
 
@@ -52,13 +57,22 @@ int czyDodacnowyPociskNaListe = 0;
 
 pocisk nowyPocisk;
 
+
+int nowyNaListe(int yD, int xD, int typ) {
+    liczbaElementowNaCalejTablicy++;
+    obiekt *tymczasowy = realloc(tablicaElementowNaPlanszy, liczbaElementowNaCalejTablicy * sizeof(obiekt));
+    tablicaElementowNaPlanszy = tymczasowy;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].y = (float)yD;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].x = (float)xD;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].type = typ;
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].kierunek = -1;
+    //if (typ)
+}
+
 int licznikDo3F() {
     licznikDo3++;
-    if (licznikDo3 > 20) {
-        licznikDo3 = 0;
-    }
+    if (licznikDo3 > 13) {licznikDo3 = 0;}
     return licznikDo3;
-
 }
 
 
@@ -66,7 +80,7 @@ int czyWartoscJestNaLiscie(int yD, int xD ) {
     int czyZwrocicFalse = 0;
 
     for (int i = 1; i <  liczbaElementowNaCalejTablicy; i++) {
-        if (tablicaElementowNaPlanszy[i].y == yD && tablicaElementowNaPlanszy[i].x == xD     ) {
+        if ((int)tablicaElementowNaPlanszy[i].y == yD && (int)tablicaElementowNaPlanszy[i].x == xD     ) {
             return tablicaElementowNaPlanszy[i].type;
         }
     }
@@ -77,7 +91,7 @@ int usuwanieZListy(int yD, int xD  ) {
 
     for (int i = 1; i <  liczbaElementowNaCalejTablicy; i++)
     {
-        if (tablicaElementowNaPlanszy[i].y == yD && tablicaElementowNaPlanszy[i].x == xD   )
+        if ((int)tablicaElementowNaPlanszy[i].y == yD && (int)tablicaElementowNaPlanszy[i].x == xD   )
         {poszukiwany = i;break;}
     }
     if (poszukiwany == -1) {return 0;}
@@ -92,15 +106,6 @@ int usuwanieZListy(int yD, int xD  ) {
 
     return poszukiwany;
 }
-int nowyNaListe(int yD, int xD, int typ) {
-    liczbaElementowNaCalejTablicy++;
-    obiekt *tymczasowy = realloc(tablicaElementowNaPlanszy, liczbaElementowNaCalejTablicy * sizeof(obiekt));
-    tablicaElementowNaPlanszy = tymczasowy;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].y = yD;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].x = xD;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].type = typ;
-}
-
 int budowanie(int z) {
     int nowyY = (int)gracz[0]/10 + sin(gracz[2]) * 3;
     int nowyX = (int)gracz[1]/10 + cos(gracz[2]) * 3;
@@ -124,18 +129,37 @@ int nowyPociskFunkcja(char mango) {
     czyDodacnowyPociskNaListe = 1;
 }
 
+void przesowanieFerisow() {
+    for (int i = 1; i <  liczbaElementowNaCalejTablicy; i++) {
 
-void zapisanieMapy() {
-    FILE * mapaWrite = fopen("map","w");
-    fseek(mapaWrite, 0, SEEK_SET);
+        if (tablicaElementowNaPlanszy[i].type == 3 ) {
+            double sinY =  tablicaElementowNaPlanszy[i].y + sin(tablicaElementowNaPlanszy[i].kierunek);
+            double cosX = tablicaElementowNaPlanszy[i].x + cos(tablicaElementowNaPlanszy[i].kierunek);
 
-    for (int y = 0; y < rozdzielczosc; y++) {
-        for (int x = 0; x < rozdzielczosc; x++) {
-            fprintf(mapaWrite,"%d", 0);
+            if (!(rand() % 34) || tablicaElementowNaPlanszy[i].kierunek == -1  ) {
+                tablicaElementowNaPlanszy[i].kierunek = (float)((rand() % 628) / 100);}
+
+            int fajnyBoolMeow = true;
+
+            if ( (int)(gracz[0]/10) == (int)sinY && (int)(gracz[1]/10) == (int)cosX && !czySmiercOdWrogow )
+                {fajnyBoolMeow = false;}
+
+            if ((czyWartoscJestNaLiscie( (int)sinY,(int)cosX) == 0 || czyWartoscJestNaLiscie( (int)sinY,(int)cosX) == 3) && fajnyBoolMeow) {
+
+                if (sinY < 1 || sinY > rozdzielczosc-1 || cosX > rozdzielczosc-1 || cosX < 1 ) {
+                    tablicaElementowNaPlanszy[i].kierunek*=-1;
+                    tablicaElementowNaPlanszy[i].kierunek+=6.28;
+                }
+                else{
+                    tablicaElementowNaPlanszy[i].y = sinY;
+                    tablicaElementowNaPlanszy[i].x = cosX;
+                }
+            }
         }
     }
-
 }
+
+
 
 void * obliczeniaMatematyczne() {
     SDL_Rect musztardaDymczasowa = { -1, -1, -1, -1 };
@@ -184,14 +208,8 @@ void * obliczeniaMatematyczne() {
             printf("\n");
         }
 
-        if (!licznikDo3F() ) {
-            for (int y = 0; y < rozdzielczosc; y++) {
-                for (int x = 0; x < rozdzielczosc; x++) {
-                    for (unsigned char z = 0; z < 3; z++) {
-                        tablicaDoRenderowania[y][x][z] = 0;
-                    }
-                }
-            }
+        if (!licznikDo3F()) {
+            przesowanieFerisow();
         }
 
 
@@ -241,9 +259,12 @@ void * obliczeniaMatematyczne() {
                     }
                 }
 
+
+                int aktualnyBlok = czyWartoscJestNaLiscie((int)pozycjeStartowe[0]/10, (int)pozycjeStartowe[1]/10);
+
                 if (pozycjeStartowe[0] >= rozdzielczosc*10 || pozycjeStartowe[1] >= rozdzielczosc*10 || pozycjeStartowe[0] <= 0 || pozycjeStartowe[1] <= 0 || colorDoTablicy < 0   ) { colorDoTablicy = 0;  break;}
-                else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) )  == 1  ) { break;}
-                else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) ) == 2  ) { //&& !czyByl  ) {
+                else if (aktualnyBlok  == 1  ) { break;}
+                else if ((aktualnyBlok == 2 || aktualnyBlok == 3) && czyByl == 0 ) {
                     czyDwa = 1;  czyZnalazlSieDwaWOguleWcalym = 1; colorSaturationNaZaznaczonym2 =  (int)colorDoTablicy; czyByl = 1; nygaWysokoscMeow = (int)((wysokoscTimer * (rozdzielczosc * 0.01) ) - rozdzielczosc ) * -1 +1;
                     pozycjaPoczotkowaDlaTekstury[0] =pozycjeStartowe[0]; pozycjaPoczotkowaDlaTekstury[1] =pozycjeStartowe[1];
                 }
@@ -279,14 +300,14 @@ void * obliczeniaMatematyczne() {
                 }
             }
 
-            int czyFemboyeZeSobaGranicza = 0;
-
-            if (czyTexture && !( miejsceNaTeksture[4] == (int)(pozycjeStartowe[0]/10) && miejsceNaTeksture[5] == (int)(pozycjeStartowe[1]/10)  )  ) {
-                //czyFemboyeZeSobaGranicza = 1;
-            }
 
 
-            if (!czyTexture && czyDwa && !czyFemboyeZeSobaGranicza  ) {
+
+            if (czyTexture && (miejsceNaTeksture[4] != (int)(pozycjaPoczotkowaDlaTekstury[0]/10) || miejsceNaTeksture[5] != (int)(pozycjaPoczotkowaDlaTekstury[1]/10)))
+            {czyDwa = 0;}
+
+
+            if (!czyTexture && czyDwa ) {
                 czyTexture++;
                 miejsceNaTeksture[0] = nygaWysokoscMeow;
                 miejsceNaTeksture[1] =  i+(rozdzielczosc/2);
@@ -296,7 +317,7 @@ void * obliczeniaMatematyczne() {
                 miejsceNaTeksture[6] = colorSaturationNaZaznaczonym2;
 
             }
-            else if (czyTexture && !czyDwa || czyDwa && i == rozdzielczosc/2 -1 || czyFemboyeZeSobaGranicza) {
+            else if (czyTexture && !czyDwa || czyDwa && i == rozdzielczosc/2 -1 ) {
                 czyTexture = 0;
 
                 miejsceNaTeksture[2] = nygaWysokoscMeow * 0.75;
@@ -329,7 +350,8 @@ void * obliczeniaMatematyczne() {
         for (int y = 0; y < rozdzielczosc; y++) {
             for (int x = 0; x < rozdzielczosc; x++) {
                 if (czyWartoscJestNaLiscie(y, x) == 1) {tablica2D[y][x][0] = 209;tablica2D[y][x][1] = 195;tablica2D[y][x][2] = 0;}
-                else if  (czyWartoscJestNaLiscie(y, x) == 2 ) {tablica2D[y][x][0] = 255;tablica2D[y][x][1] = 18;tablica2D[y][x][2] = 188;}
+                else if  (czyWartoscJestNaLiscie(y, x) == 2) {tablica2D[y][x][0] = 255;tablica2D[y][x][1] = 18;tablica2D[y][x][2] = 188;}
+                else if (czyWartoscJestNaLiscie(y, x) == 3) {tablica2D[y][x][0] = 80;tablica2D[y][x][1] = 210 ;tablica2D[y][x][2] = 255;}
             }
         }
         tablica2D[ (int)gracz[0]/10 ][(int)gracz[1]/10][0] = 255; tablica2D[ (int)gracz[0]/10 ][(int)gracz[1]/10][1] = 0; tablica2D[ (int)gracz[0]/10 ][(int)gracz[1]/10][2] = 0;
@@ -426,6 +448,10 @@ void *renderowanie() {
                             gracz[1] += (float)cos(gracz[2]) * inputNaLiczby[1][x] ;
                             break;
                         }
+                        else if (czyWartoscJestNaLiscie(mango67One,mango67Two) == 3 && czySmiercOdWrogow) {
+                            turnOn = false;
+                        }
+
                     }
                 }
                 for (char i = 0; i < 10; i++) {
@@ -448,6 +474,11 @@ void *renderowanie() {
 }
 
 void main() {
+    srand(time(NULL));
+
+    czySmiercOdWrogow = false;
+
+
     for (int y = 0; y < rozdzielczosc; y++) { for (int x = 0; x < rozdzielczosc; x++) {  }}
     tablicaElementowNaPlanszy = (obiekt*) malloc( liczbaElementowNaCalejTablicy * sizeof(obiekt));
 
@@ -457,7 +488,7 @@ void main() {
     tablicaElementowNaPlanszy[1].type = 1;
     for (unsigned char i = 0; i < 3; i++) {
         tablicaElementowNaPlanszy[i+2].y = 15;
-        tablicaElementowNaPlanszy[i+2].x = 9 + i;
+        tablicaElementowNaPlanszy[i+2].x = (float)i +  9;
         tablicaElementowNaPlanszy[i+2].type = 1;
     }
 
