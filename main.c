@@ -2,16 +2,16 @@
 #include <SDL2/SDL.h>
 #include <math.h>
 #include <pthread.h>
-#include <stdbool.h>
 #include <SDL2/SDL_image.h>
 #define rozdzielczosc 320
+#define windowRealResolutnion 800
+
 #define standardowePrzyspieszeniePocisku -0.05;
 #define standardowaPredkoscPocisku 2
 
 #define timeOf 16
 
 int turnOn = 1;
-//unsigned char tablica[rozdzielczosc][rozdzielczosc];
 unsigned char tablicaDoRenderowania[rozdzielczosc][rozdzielczosc][3];
 unsigned char tablica2D[rozdzielczosc][rozdzielczosc][3];
 
@@ -46,10 +46,21 @@ SDL_KeyCode listaZnakow[10] = {SDLK_0,SDLK_1,SDLK_2,SDLK_3,SDLK_4,SDLK_5,SDLK_6,
 
 unsigned char czyPostawicKloca = 0;
 
+int licznikDo3 = 0;
 
 int czyDodacnowyPociskNaListe = 0;
 
 pocisk nowyPocisk;
+
+int licznikDo3F() {
+    licznikDo3++;
+    if (licznikDo3 > 20) {
+        licznikDo3 = 0;
+    }
+    return licznikDo3;
+
+}
+
 
 int czyWartoscJestNaLiscie(int yD, int xD ) {
     int czyZwrocicFalse = 0;
@@ -173,15 +184,32 @@ void * obliczeniaMatematyczne() {
             printf("\n");
         }
 
+        if (!licznikDo3F() ) {
+            for (int y = 0; y < rozdzielczosc; y++) {
+                for (int x = 0; x < rozdzielczosc; x++) {
+                    for (unsigned char z = 0; z < 3; z++) {
+                        tablicaDoRenderowania[y][x][z] = 0;
+                    }
+                }
+            }
+        }
+
+
 
         rozmiarFemboyTable = 0;
         int czyZnalazlSieDwaWOguleWcalym = 0;
 
         for (int i = 0; i < rozdzielczosc; i++ ) {for (int j = 0; j < rozdzielczosc; j++ ) {for (int z = 0; z < 3; z++) {tablica2D[i][j][z] = 0;}}}
 
-        for (int i = -rozdzielczosc/2; i < rozdzielczosc/2; i++)
+        for (int promien = -rozdzielczosc/2; promien < rozdzielczosc/2; promien++)
         {
+            int i = promien;
+            //if (!promien) { promien = 1; }
+
             float pozycjeStartowe[2] = {gracz[0], gracz[1]};
+
+            float poprzedniaPozycjaStartowa[2] = {gracz[0],gracz[1]};
+
             float colorDoTablicy = 255;
 
             float stepX = (float)cos(gracz[2] + ((float)i/(rozdzielczosc/10) * 0.1));
@@ -194,17 +222,34 @@ void * obliczeniaMatematyczne() {
 
             int tablicaPocisku[3] = {  0,0, 0  };  //bool i wysokosc
 
+            unsigned char czyByl = 0;
+
             int colorSaturationNaZaznaczonym2 = 0;
+
+            int nygaWysokoscMeow = 0;
+
+            int pozycjaPoczotkowaDlaTekstury[2];
+
+            int wysokoscPrzyszla = 0;
+
 
             while (1) {
 
+                if ((int)poprzedniaPozycjaStartowa[0]/10 != (int)pozycjeStartowe[0]/10 || (int)poprzedniaPozycjaStartowa[1]/10 != (int)pozycjeStartowe[1]/10  ) {
+                    for (char i = 0; i < 2; i++) {
+                        poprzedniaPozycjaStartowa[i] = pozycjeStartowe[i];
+                    }
+                }
+
                 if (pozycjeStartowe[0] >= rozdzielczosc*10 || pozycjeStartowe[1] >= rozdzielczosc*10 || pozycjeStartowe[0] <= 0 || pozycjeStartowe[1] <= 0 || colorDoTablicy < 0   ) { colorDoTablicy = 0;  break;}
                 else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) )  == 1  ) { break;}
-                else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) ) == 2  ) {
-                    czyDwa = 1;  czyZnalazlSieDwaWOguleWcalym = 1; colorSaturationNaZaznaczonym2 =  (int)colorDoTablicy; break;
+                else if (czyWartoscJestNaLiscie((int)floor(pozycjeStartowe[0]/10), (int)floor(pozycjeStartowe[1]/10) ) == 2  ) { //&& !czyByl  ) {
+                    czyDwa = 1;  czyZnalazlSieDwaWOguleWcalym = 1; colorSaturationNaZaznaczonym2 =  (int)colorDoTablicy; czyByl = 1; nygaWysokoscMeow = (int)((wysokoscTimer * (rozdzielczosc * 0.01) ) - rozdzielczosc ) * -1 +1;
+                    pozycjaPoczotkowaDlaTekstury[0] =pozycjeStartowe[0]; pozycjaPoczotkowaDlaTekstury[1] =pozycjeStartowe[1];
                 }
 
                 pozycjeStartowe[0] += stepY; pozycjeStartowe[1] += stepX;
+
                 colorDoTablicy+= -2;
 
                 for (unsigned char i = 0; i < wyznaczonyPocisk; i++) {
@@ -228,58 +273,58 @@ void * obliczeniaMatematyczne() {
 
             for (int y = 0; y < rozdzielczosc/2; y++) {
                 for (int z = 0; z < 3; z++) {
-                    tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = koloryTla[z];
-                    if (koloryTla[z] > 0) { koloryTla[z] = koloryTla[z] - koloryTla[z]/30;  }
+                    tablicaDoRenderowania[y][(promien+rozdzielczosc/2)][z] = koloryTla[z];
+                    tablicaDoRenderowania[(y - rozdzielczosc) * -1][(promien+rozdzielczosc/2)][z] = koloryTla[z];
+                    if (koloryTla[z] > 4) { koloryTla[z] = koloryTla[z] - koloryTla[z]/ (rozdzielczosc * 0.11 );  }
                 }
             }
 
-            koloryTla[0] = 237; koloryTla[1] = 40; koloryTla[2] = 40;
+            int czyFemboyeZeSobaGranicza = 0;
 
-            for (int y = rozdzielczosc; y > rozdzielczosc/2; y--) { for (int z = 0; z < 3; z++) {
-                tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = koloryTla[z];
-                if (koloryTla[z] > 0) { koloryTla[z] = koloryTla[z] - koloryTla[z]/30;  }
-            }}
+            if (czyTexture && !( miejsceNaTeksture[4] == (int)(pozycjeStartowe[0]/10) && miejsceNaTeksture[5] == (int)(pozycjeStartowe[1]/10)  )  ) {
+                //czyFemboyeZeSobaGranicza = 1;
+            }
 
-            int czyGraniczyZeSobaInnaTekstura = 0;
-            if (czyTexture  &&  ((int)floor(pozycjeStartowe[0]/10) != miejsceNaTeksture[4] || (int)floor(pozycjeStartowe[1]/10) != miejsceNaTeksture[5]) ) {czyDwa = 0;}
 
-            if (!czyTexture && czyDwa  ) {
+            if (!czyTexture && czyDwa && !czyFemboyeZeSobaGranicza  ) {
                 czyTexture++;
-                miejsceNaTeksture[0] = wysokosc;
+                miejsceNaTeksture[0] = nygaWysokoscMeow;
                 miejsceNaTeksture[1] =  i+(rozdzielczosc/2);
-
-                miejsceNaTeksture[4] = (int)floor(pozycjeStartowe[0]/10);
-                miejsceNaTeksture[5] = (int)floor(pozycjeStartowe[1]/10);
-
+                miejsceNaTeksture[3] = 0;
+                miejsceNaTeksture[4] = (int)(pozycjaPoczotkowaDlaTekstury[0]/10);
+                miejsceNaTeksture[5] = (int)(pozycjaPoczotkowaDlaTekstury[1]/10);
                 miejsceNaTeksture[6] = colorSaturationNaZaznaczonym2;
 
             }
-            else if (czyTexture && !czyDwa || czyDwa && i == rozdzielczosc/2 -1) {
+            else if (czyTexture && !czyDwa || czyDwa && i == rozdzielczosc/2 -1 || czyFemboyeZeSobaGranicza) {
                 czyTexture = 0;
 
-                miejsceNaTeksture[2] = wysokosc;
-                miejsceNaTeksture[3] = i+(rozdzielczosc/2);
+                miejsceNaTeksture[2] = nygaWysokoscMeow * 0.75;
+                miejsceNaTeksture[3]*=2;
 
                 SDL_Rect tymczasowyMangoMusztarda = {miejsceNaTeksture[1],(int)(rozdzielczosc - miejsceNaTeksture[0]*0.75 ) /2 ,miejsceNaTeksture[3],(int)(rozdzielczosc + miejsceNaTeksture[0] * 0.75) /2  };
-                femboyTable[rozmiarFemboyTable][1].x = miejsceNaTeksture[6];
 
+                femboyTable[rozmiarFemboyTable][1].x = miejsceNaTeksture[6];
                 femboyTable[rozmiarFemboyTable][0] = tymczasowyMangoMusztarda;
                 rozmiarFemboyTable++;
 
                 kopiowanieBoolDlaRenderu = 1;
+
+
+                miejsceNaTeksture[3] = 0;
             }
-            else if (czyDwa && czyTexture) {czyTexture++;}
-            else if (!czyDwa && !czyTexture) {for (int y = (rozdzielczosc - wysokosc)/2 ; y < (rozdzielczosc + wysokosc)/2; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = colorDoTablicy;}}}
+            else if (czyDwa && czyTexture) {czyTexture++; miejsceNaTeksture[3]++;  }
+            else if (!czyDwa && !czyTexture) {for (int y = (rozdzielczosc - wysokosc)/2 ; y < (rozdzielczosc + wysokosc)/2; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(promien+rozdzielczosc/2)][z] = colorDoTablicy;}}}
+
+
 
             unsigned char mango[] = { 227, 12, 199};
             if (tablicaPocisku[0] ) {
                 for (int y = (rozdzielczosc - tablicaPocisku[1])/2 ; y < (rozdzielczosc + tablicaPocisku[1])/2; y++) {
-                    for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(i+rozdzielczosc/2)][z] = tablicaPocisku[2] + mango[z]   ;}
+                    for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(promien+rozdzielczosc/2)][z] = tablicaPocisku[2] + mango[z]   ;}
                 }
             }
         }
-
-
 
         for (int y = 0; y < rozdzielczosc; y++) {
             for (int x = 0; x < rozdzielczosc; x++) {
@@ -325,17 +370,21 @@ void * obliczeniaMatematyczne() {
     }
 }
 void *renderowanie() {
-    SDL_Window* meowOkno = SDL_CreateWindow ("FajneOkno",800,800,800,800,SDL_WINDOW_SHOWN);
+    SDL_Window* meowOkno = SDL_CreateWindow ("FajneOkno",windowRealResolutnion,windowRealResolutnion,windowRealResolutnion,windowRealResolutnion,SDL_WINDOW_SHOWN);
     SDL_Renderer* meowRender = SDL_CreateRenderer (meowOkno, -1, SDL_RENDERER_ACCELERATED);
     SDL_Event meowEvent;
     SDL_RenderSetLogicalSize(meowRender,rozdzielczosc,rozdzielczosc);
+
     femboyImage = IMG_LoadTexture(meowRender,"feris.png");
     SDL_Texture* tekstura = SDL_CreateTexture(meowRender,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_STREAMING,rozdzielczosc,rozdzielczosc);
+
+
+
     SDL_Texture* tekstura2D = SDL_CreateTexture(meowRender,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_STREAMING,rozdzielczosc,rozdzielczosc);
 
     IMG_Init(IMG_INIT_PNG);
     SDL_Texture* bron = IMG_LoadTexture(meowRender,"bronPalna.png");
-    SDL_Rect miejsceBroni = { 130, 260, 60, 60};
+    SDL_Rect miejsceBroni = { rozdzielczosc * 0.40625, rozdzielczosc * 0.8125, rozdzielczosc * 0.1875, rozdzielczosc * 0.1875};
 
 
 
@@ -361,7 +410,7 @@ void *renderowanie() {
             if (meowEvent.type == SDL_QUIT ) { turnOn = 0; }
             else if (meowEvent.type == SDL_KEYDOWN)
             {
-                if (meowEvent.key.keysym.sym == SDLK_ESCAPE ) {turnOn = 0;}
+                if (meowEvent.key.keysym.sym == SDLK_ESCAPE ) {renderingMode = 1;}
                 else if (meowEvent.key.keysym.sym == SDLK_a) {gracz[2] -= 0.15; if (gracz[2] < 0) { gracz[2] = 6.283;   };}
                 else if (meowEvent.key.keysym.sym == SDLK_d) {gracz[2] += 0.15;   if (gracz[2] > 6.3) { gracz[2] = 0;   };}
                 else if (meowEvent.key.keysym.sym == SDLK_SPACE && !czyDodacnowyPociskNaListe  && wyznaczonyPocisk < 63) { nowyPociskFunkcja(0); }
