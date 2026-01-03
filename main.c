@@ -178,6 +178,7 @@ void * obliczeniaMatematyczne() {
 
 
     while (turnOn) {
+        przesowanieFerisow();
         unsigned char listaWyznaczonychDoUsuniecia[64];
         char ktoryZaznaczyc = 0;
 
@@ -416,7 +417,7 @@ void * obliczeniaMatematyczne() {
             budowanie(typeOf);
             czyPostawicKloca = 0;
         }
-        SDL_Delay(timeOf * 5);
+        SDL_Delay(timeOf * 4);
     }
 }
 void *renderowanie() {
