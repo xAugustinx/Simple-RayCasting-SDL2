@@ -6,25 +6,39 @@
 #include <SDL2/SDL_image.h>
 #include <stdlib.h>
 
-#define rozdzielczosc 320
+#define rozdzielczosc 300
 #define windowRealResolutnion 800
+
+#define distanceOfWork 18
 
 #define standardowePrzyspieszeniePocisku -0.05;
 #define standardowaPredkoscPocisku 2
 #define timeOf 16
 
+#define promienDlugosc 2.0f
+
+int long id = 0;
 
 int czySmiercOdWrogow = 1;
+int poprzedniRuchMyszka = 0;
+
+short czyDoszloDoZmianyWysokosci[] = {-2,0,0};
+
+
+unsigned char czySkaskowacLinie = 0;
 
 int turnOn = 1;
 unsigned char tablicaDoRenderowania[rozdzielczosc][rozdzielczosc][3];
 unsigned char tablica2D[rozdzielczosc][rozdzielczosc][3];
 
-typedef struct {float y; float x; unsigned char type; long id; float kierunek;  } obiekt ;
+typedef struct {short pierwszeX; short pierwszyY; short drugiX; short drugiY; unsigned char kolor;  } linia;
+typedef struct {float y; float x; unsigned char type; long int id; float kierunek;  } obiekt ;
 
 obiekt * tablicaElementowNaPlanszy;
+linia * tablicaLiniWygladzanieKrawedzi; // pierwszy element x to jest ilosc elementow
 
 int liczbaElementowNaCalejTablicy = 5;
+int liczbaWszystkichLini = 1;
 
 typedef struct  {float przyspieszenie;float predkosc;float kierunek;float y;float x; int time; char mode; } pocisk;
 pocisk pociskiZBroni[64];
@@ -43,30 +57,32 @@ float renderingMode = 1;
 
 int nygasColors[2];
 int inputNaLiczby[2][2] = {{SDLK_w,SDLK_s},{1   ,-1 }};
-
 int typeOf = 1;
-
 
 SDL_KeyCode listaZnakow[10] = {SDLK_0,SDLK_1,SDLK_2,SDLK_3,SDLK_4,SDLK_5,SDLK_6,SDLK_7,SDLK_8,SDLK_9 };
 
 unsigned char czyPostawicKloca = 0;
-
 int licznikDo3 = 0;
-
 int czyDodacnowyPociskNaListe = 0;
 
 pocisk nowyPocisk;
 
+void usunieciePaska(){
+    for (int y = 0; y < rozdzielczosc; y++){
+        for (unsigned char z = 0; z < 3; z++) {
+            //tablicaDoRenderowania[(int)(rozdzielczosc/2) ][ y][z] = 0;
+        }
+    }
+}
+
 
 int nowyNaListe(int yD, int xD, int typ) {
     liczbaElementowNaCalejTablicy++;
+    id++;
     obiekt *tymczasowy = realloc(tablicaElementowNaPlanszy, liczbaElementowNaCalejTablicy * sizeof(obiekt));
     tablicaElementowNaPlanszy = tymczasowy;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].y = (float)yD;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].x = (float)xD;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].type = typ;
-    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1].kierunek = -1;
-    //if (typ)
+    obiekt tymczasowyObiektMeow = {(float)yD,(float)xD,typ,id,-1  };
+    tablicaElementowNaPlanszy[liczbaElementowNaCalejTablicy -1] = tymczasowyObiektMeow;
 }
 
 int licznikDo3F() {
@@ -109,30 +125,23 @@ int usuwanieZListy(int yD, int xD  ) {
 int budowanie(int z) {
     int nowyY = (int)gracz[0]/10 + sin(gracz[2]) * 3;
     int nowyX = (int)gracz[1]/10 + cos(gracz[2]) * 3;
-
     nowyNaListe(nowyY,nowyX, z);
-
 }
 
-
 int nowyPociskFunkcja(char mango) {
-    nowyPocisk.time = 0;
-    nowyPocisk.kierunek = gracz[2];
-    nowyPocisk.y = gracz[0];
-    nowyPocisk.x = gracz[1];
-
-    nowyPocisk.predkosc = standardowaPredkoscPocisku;
-    nowyPocisk.przyspieszenie = standardowaPredkoscPocisku;
-
-
-    nowyPocisk.mode = mango;
+    pocisk nowyPociskMeow =
+    {standardowaPredkoscPocisku, standardowaPredkoscPocisku, gracz[2], gracz[0],  gracz[1],0, mango};
+    nowyPocisk = nowyPociskMeow;
     czyDodacnowyPociskNaListe = 1;
 }
 
 void przesowanieFerisow() {
     for (int i = 1; i <  liczbaElementowNaCalejTablicy; i++) {
 
-        if (tablicaElementowNaPlanszy[i].type == 3 ) {
+        if (tablicaElementowNaPlanszy[i].type == 3 && tablicaElementowNaPlanszy[i].y < gracz[0]/10+distanceOfWork
+            && tablicaElementowNaPlanszy[i].y > gracz[0]/10-distanceOfWork
+            && tablicaElementowNaPlanszy[i].x < gracz[1]/10+distanceOfWork
+            && tablicaElementowNaPlanszy[i].x > gracz[1]/10-distanceOfWork) {
             double sinY =  tablicaElementowNaPlanszy[i].y + sin(tablicaElementowNaPlanszy[i].kierunek);
             double cosX = tablicaElementowNaPlanszy[i].x + cos(tablicaElementowNaPlanszy[i].kierunek);
 
@@ -159,8 +168,6 @@ void przesowanieFerisow() {
     }
 }
 
-
-
 void * obliczeniaMatematyczne() {
     SDL_Rect musztardaDymczasowa = { -1, -1, -1, -1 };
     for (char i = 0; i < 64; i++ ) {femboyTable[i][0] = musztardaDymczasowa; pociskiZBroni[i] = pustyPocisk; }
@@ -174,6 +181,13 @@ void * obliczeniaMatematyczne() {
         unsigned char listaWyznaczonychDoUsuniecia[64];
         char ktoryZaznaczyc = 0;
 
+        if (czySkaskowacLinie) {
+            liczbaWszystkichLini = 1;
+            linia * nyaUwu = realloc(tablicaLiniWygladzanieKrawedzi, liczbaWszystkichLini * sizeof(linia));
+            tablicaLiniWygladzanieKrawedzi = nyaUwu;
+        }
+        czySkaskowacLinie = 1;
+
         for (char i = 0; i < 64; i++) {
             if (  pociskiZBroni[i].x <= rozdzielczosc*10 &&  pociskiZBroni[i].y <= rozdzielczosc*10  && pociskiZBroni[i].x >= 0 &&  pociskiZBroni[i].y >= 0 && pociskiZBroni[i].predkosc > 0  ) {pociskiZBroni[i].time += 1;}
         }
@@ -182,7 +196,7 @@ void * obliczeniaMatematyczne() {
                 listaWyznaczonychDoUsuniecia[ktoryZaznaczyc] = i;
                 ktoryZaznaczyc++;
                 wyznaczonyPocisk--;
-                printf("koniec %f %f \n", pociskiZBroni[i].y, pociskiZBroni[i].x);
+
                 if (pociskiZBroni[i].predkosc <= 0 && pociskiZBroni[i].mode == 1) {
                     nowyNaListe((int)pociskiZBroni[i].y/10,(int)pociskiZBroni[i].x / 10, 1);
                 }
@@ -201,26 +215,19 @@ void * obliczeniaMatematyczne() {
             pociskiZBroni[i].y += sin(pociskiZBroni[i].kierunek) * pociskiZBroni[i].predkosc;
             pociskiZBroni[i].x += cos(pociskiZBroni[i].kierunek) * pociskiZBroni[i].predkosc;
             pociskiZBroni[i].predkosc += pociskiZBroni[i].przyspieszenie;
-
-            printf("y: %f x: %f w: %f v: %f a: %f t: %d\n", pociskiZBroni[i].y, pociskiZBroni[i].x, pociskiZBroni[i].kierunek , pociskiZBroni[i].predkosc,  pociskiZBroni[i].przyspieszenie, pociskiZBroni[i].time);
         }
-        if (wyznaczonyPocisk > 0) {
-            printf("\n");
-        }
-
-        if (!licznikDo3F()) {
-            przesowanieFerisow();
-        }
-
-
 
         rozmiarFemboyTable = 0;
         int czyZnalazlSieDwaWOguleWcalym = 0;
+
+        usunieciePaska();
 
         for (int i = 0; i < rozdzielczosc; i++ ) {for (int j = 0; j < rozdzielczosc; j++ ) {for (int z = 0; z < 3; z++) {tablica2D[i][j][z] = 0;}}}
 
         for (int promien = -rozdzielczosc/2; promien < rozdzielczosc/2; promien++)
         {
+
+            unsigned char musztardaKolorPrzedMeow = 0;
             int i = promien;
             //if (!promien) { promien = 1; }
 
@@ -228,30 +235,28 @@ void * obliczeniaMatematyczne() {
 
             float poprzedniaPozycjaStartowa[2] = {gracz[0],gracz[1]};
 
-            float colorDoTablicy = 255;
+            double colorDoTablicy = 255;
 
-            float stepX = (float)cos(gracz[2] + ((float)i/(rozdzielczosc/10) * 0.1));
-            float stepY = (float)sin(gracz[2] + ((float)i/(rozdzielczosc/10)   * 0.1));
+            float stepX = ((float)cos(gracz[2] + ((float)i/(rozdzielczosc/10)   * 0.1))) / promienDlugosc;
+            float stepY = ((float)sin(gracz[2] + ((float)i/(rozdzielczosc/10)   * 0.1))) / promienDlugosc;
 
-            int wysokoscTimer = 1;
+            float wysokoscTimer = 1;
             int timer = 1;
             char czyDwa = 0;
             int czyZaczac = 0;
 
             int tablicaPocisku[3] = {  0,0, 0  };  //bool i wysokosc
-
             unsigned char czyByl = 0;
 
             int colorSaturationNaZaznaczonym2 = 0;
-
             int nygaWysokoscMeow = 0;
-
             int pozycjaPoczotkowaDlaTekstury[2];
-
+            int pozycjaPoczotkowaDlaBloku[2];
             int wysokoscPrzyszla = 0;
 
 
             while (1) {
+
 
                 if ((int)poprzedniaPozycjaStartowa[0]/10 != (int)pozycjeStartowe[0]/10 || (int)poprzedniaPozycjaStartowa[1]/10 != (int)pozycjeStartowe[1]/10  ) {
                     for (char i = 0; i < 2; i++) {
@@ -269,9 +274,10 @@ void * obliczeniaMatematyczne() {
                     pozycjaPoczotkowaDlaTekstury[0] =pozycjeStartowe[0]; pozycjaPoczotkowaDlaTekstury[1] =pozycjeStartowe[1];
                 }
 
-                pozycjeStartowe[0] += stepY; pozycjeStartowe[1] += stepX;
+                pozycjeStartowe[0] += stepY;
+                pozycjeStartowe[1] += stepX;
 
-                colorDoTablicy+= -2;
+                colorDoTablicy = colorDoTablicy -  (2 / promienDlugosc)  ;
 
                 for (unsigned char i = 0; i < wyznaczonyPocisk; i++) {
                     if ( (int)pociskiZBroni[i].y ==  (int)pozycjeStartowe[0] && (int)pociskiZBroni[i].x ==  (int)pozycjeStartowe[1]   ) {
@@ -283,7 +289,7 @@ void * obliczeniaMatematyczne() {
                 }
 
                 for (int y = 0; y < 3; y++) {tablica2D[(int)pozycjeStartowe[0]/10][(int)pozycjeStartowe[1]/10][y] = colorDoTablicy;}
-                if (wysokoscTimer < rozdzielczosc * 10 && timer+1  ) { wysokoscTimer++;}
+                if (wysokoscTimer < rozdzielczosc * 10 && timer+1  ) { wysokoscTimer+= 1/promienDlugosc;}
 
                 timer*= -1;
             }
@@ -299,8 +305,6 @@ void * obliczeniaMatematyczne() {
                     if (koloryTla[z] > 4) { koloryTla[z] = koloryTla[z] - koloryTla[z]/ (rozdzielczosc * 0.11 );  }
                 }
             }
-
-
 
 
             if (czyTexture && (miejsceNaTeksture[4] != (int)(pozycjaPoczotkowaDlaTekstury[0]/10) || miejsceNaTeksture[5] != (int)(pozycjaPoczotkowaDlaTekstury[1]/10)))
@@ -328,18 +332,47 @@ void * obliczeniaMatematyczne() {
                 femboyTable[rozmiarFemboyTable][1].x = miejsceNaTeksture[6];
                 femboyTable[rozmiarFemboyTable][0] = tymczasowyMangoMusztarda;
                 rozmiarFemboyTable++;
-
                 kopiowanieBoolDlaRenderu = 1;
-
-
                 miejsceNaTeksture[3] = 0;
             }
             else if (czyDwa && czyTexture) {czyTexture++; miejsceNaTeksture[3]++;  }
-            else if (!czyDwa && !czyTexture) {for (int y = (rozdzielczosc - wysokosc)/2 ; y < (rozdzielczosc + wysokosc)/2; y++) { for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(promien+rozdzielczosc/2)][z] = colorDoTablicy;}}}
+            else if (!czyDwa && !czyTexture) {
+                for (int y = (rozdzielczosc - wysokosc)/2 ; y < (rozdzielczosc + wysokosc)/2; y++) {
+
+                    for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(promien+rozdzielczosc/2)][z] = colorDoTablicy;}
+                }
+            }
+
+            //system generowania dodatkowych lini AA
+            int czyMozeInnyMeow  = 0;
+
+            if (czyDoszloDoZmianyWysokosci[0] == 2 && (miejsceNaTeksture[4] != (int)(pozycjaPoczotkowaDlaBloku[0]/10) || miejsceNaTeksture[5] != (int)(pozycjaPoczotkowaDlaBloku[1]/10)))
+            {czyMozeInnyMeow = 1;}
 
 
+            if (czyDoszloDoZmianyWysokosci[0] == -2 && colorDoTablicy > 1 && !czyMozeInnyMeow) {
+                czyDoszloDoZmianyWysokosci[0] = 2;
 
-            unsigned char mango[] = { 227, 12, 199};
+                liczbaWszystkichLini++;
+                linia *tymczasowy = realloc(tablicaLiniWygladzanieKrawedzi, liczbaWszystkichLini * sizeof(linia));
+                linia tymczasowaLinia = { (promien+rozdzielczosc/2) ,wysokosc, -1, -1, colorDoTablicy  };
+                tymczasowy[liczbaWszystkichLini -1] = tymczasowaLinia;
+                tablicaLiniWygladzanieKrawedzi = tymczasowy;
+
+            }
+            else if (czyDoszloDoZmianyWysokosci[0] == 2 && (colorDoTablicy < 1 || i == rozdzielczosc/2 -1) || czyMozeInnyMeow  ) {
+                czyDoszloDoZmianyWysokosci[0] = -2;
+                tablicaLiniWygladzanieKrawedzi[liczbaWszystkichLini -1].drugiX = (promien+rozdzielczosc/2);
+                tablicaLiniWygladzanieKrawedzi[liczbaWszystkichLini -1].drugiY = czyDoszloDoZmianyWysokosci[1];
+                tablicaLiniWygladzanieKrawedzi[liczbaWszystkichLini -1].kolor =  (tablicaLiniWygladzanieKrawedzi[liczbaWszystkichLini -1].kolor + musztardaKolorPrzedMeow) /2;
+            }
+
+            musztardaKolorPrzedMeow = colorDoTablicy;
+
+            czyDoszloDoZmianyWysokosci[1] = wysokosc;
+            //koniec AA
+
+            unsigned char mango[] = {227, 12, 199};
             if (tablicaPocisku[0] ) {
                 for (int y = (rozdzielczosc - tablicaPocisku[1])/2 ; y < (rozdzielczosc + tablicaPocisku[1])/2; y++) {
                     for (int z = 0; z < 3; z++) {tablicaDoRenderowania[y][(promien+rozdzielczosc/2)][z] = tablicaPocisku[2] + mango[z]   ;}
@@ -367,7 +400,6 @@ void * obliczeniaMatematyczne() {
             tablica2D[ (int)pociskiZBroni[i].y/10  ][ (int)pociskiZBroni[i].x/10][0] = 255 ;
             tablica2D[ (int)pociskiZBroni[i].y/10  ][ (int)pociskiZBroni[i].x/10][0] = 173  ;
         }
-
         for (unsigned char i = 0; i < wyznaczonyPocisk; i++) {
             for (unsigned char j = 0; j < (int)round( pociskiZBroni[i].predkosc - pociskiZBroni[i].przyspieszenie) ; j++) {
 
@@ -380,14 +412,10 @@ void * obliczeniaMatematyczne() {
                 }
             }
         }
-
-
         if (czyPostawicKloca) {
             budowanie(typeOf);
             czyPostawicKloca = 0;
         }
-
-
         SDL_Delay(timeOf * 5);
     }
 }
@@ -396,24 +424,35 @@ void *renderowanie() {
     SDL_Renderer* meowRender = SDL_CreateRenderer (meowOkno, -1, SDL_RENDERER_ACCELERATED);
     SDL_Event meowEvent;
     SDL_RenderSetLogicalSize(meowRender,rozdzielczosc,rozdzielczosc);
-
     femboyImage = IMG_LoadTexture(meowRender,"feris.png");
     SDL_Texture* tekstura = SDL_CreateTexture(meowRender,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_STREAMING,rozdzielczosc,rozdzielczosc);
-
-
-
     SDL_Texture* tekstura2D = SDL_CreateTexture(meowRender,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_STREAMING,rozdzielczosc,rozdzielczosc);
-
     IMG_Init(IMG_INIT_PNG);
     SDL_Texture* bron = IMG_LoadTexture(meowRender,"bronPalna.png");
     SDL_Rect miejsceBroni = { rozdzielczosc * 0.40625, rozdzielczosc * 0.8125, rozdzielczosc * 0.1875, rozdzielczosc * 0.1875};
 
-
-
+    SDL_ShowCursor(SDL_DISABLE);
 
     while (turnOn) {
         if (renderingMode == 1) {
             SDL_UpdateTexture(tekstura, NULL, tablicaDoRenderowania, rozdzielczosc * 3);SDL_RenderCopy(meowRender, tekstura, NULL, NULL);
+
+            for (int i = 1; i < liczbaWszystkichLini; i++ ) {
+                //printf("%d %d %d %d \n", tablicaLiniWygladzanieKrawedzi[i].pierwszeX, tablicaLiniWygladzanieKrawedzi[i].pierwszyY,tablicaLiniWygladzanieKrawedzi[i].drugiX,tablicaLiniWygladzanieKrawedzi[i].drugiY);
+                unsigned char meow = tablicaLiniWygladzanieKrawedzi[i].kolor;
+                SDL_SetRenderDrawColor(meowRender, meow, meow, meow, 0  );
+
+                if (tablicaLiniWygladzanieKrawedzi[i].pierwszeX > -1 &&tablicaLiniWygladzanieKrawedzi[i].pierwszyY > -1 &&tablicaLiniWygladzanieKrawedzi[i].drugiX > -1 &&tablicaLiniWygladzanieKrawedzi[i].drugiY > -1) {
+                    for (int o = -4; o <= 4; o++) {
+                        SDL_RenderDrawLine(
+                        meowRender,tablicaLiniWygladzanieKrawedzi[i].pierwszeX,(rozdzielczosc - tablicaLiniWygladzanieKrawedzi[i].pierwszyY) / 2 +o,tablicaLiniWygladzanieKrawedzi[i].drugiX,(rozdzielczosc - tablicaLiniWygladzanieKrawedzi[i].drugiY) / 2 +o) ;
+                        SDL_RenderDrawLine(meowRender,tablicaLiniWygladzanieKrawedzi[i].pierwszeX,(rozdzielczosc + tablicaLiniWygladzanieKrawedzi[i].pierwszyY) / 2+o,tablicaLiniWygladzanieKrawedzi[i].drugiX,(rozdzielczosc + tablicaLiniWygladzanieKrawedzi[i].drugiY) / 2 +o);
+                    }
+                }
+            }
+
+            czySkaskowacLinie = 1;
+
             if (kopiowanieBoolDlaRenderu) {
                 int rozmiarFemboyTableRender = rozmiarFemboyTable;
                 for (char i = 0; i < rozmiarFemboyTableRender; i++ ) {
@@ -430,28 +469,40 @@ void *renderowanie() {
 
         while (SDL_PollEvent(&meowEvent)) {
             if (meowEvent.type == SDL_QUIT ) { turnOn = 0; }
+
+            if (meowEvent.type == SDL_MOUSEMOTION) {
+
+                if (meowEvent.motion.xrel == -1) {gracz[2] -= 0.02; if (gracz[2] < 0) { gracz[2] = 6.283;   };}
+                else if (meowEvent.motion.xrel == 1) {gracz[2] += 0.02;   if (gracz[2] > 6.3) { gracz[2] = 0;   };}
+
+                SDL_WarpMouseInWindow(meowOkno, rozdzielczosc /2, (rozdzielczosc / 2) );
+            }
+            else if (meowEvent.type == SDL_MOUSEBUTTONDOWN && !czyDodacnowyPociskNaListe  && wyznaczonyPocisk < 63) {
+                if (meowEvent.button.button == SDL_BUTTON_LEFT ) {nowyPociskFunkcja(0);}
+                else if (meowEvent.button.button == SDL_BUTTON_RIGHT ) {czyPostawicKloca = 1; }
+
+            }
             else if (meowEvent.type == SDL_KEYDOWN)
             {
                 if (meowEvent.key.keysym.sym == SDLK_ESCAPE ) {renderingMode = 1;}
-                else if (meowEvent.key.keysym.sym == SDLK_a) {gracz[2] -= 0.15; if (gracz[2] < 0) { gracz[2] = 6.283;   };}
-                else if (meowEvent.key.keysym.sym == SDLK_d) {gracz[2] += 0.15;   if (gracz[2] > 6.3) { gracz[2] = 0;   };}
-                else if (meowEvent.key.keysym.sym == SDLK_SPACE && !czyDodacnowyPociskNaListe  && wyznaczonyPocisk < 63) { nowyPociskFunkcja(0); }
-                else if (meowEvent.key.keysym.sym == SDLK_n) { czyPostawicKloca = 1; }
                 else if (meowEvent.key.keysym.sym == SDLK_m) { renderingMode *= -1;  }
                 for (int x = 0; x < 2; x++) {
                     if (meowEvent.key.keysym.sym == inputNaLiczby[0][x]) {
-                        int mango67One = (int)((gracz[0] + sin(gracz[2]) * inputNaLiczby[1][x]        ) / 10 ) ;
-                        int mango67Two = (int)((gracz[1] + cos(gracz[2]) * inputNaLiczby[1][x]   ) / 10 )  ;
+                        int mango67One = (int)((gracz[0] + sin(gracz[2]) * inputNaLiczby[1][x] ) / 10 ) ;
+                        int mango67Two = (int)((gracz[1] + cos(gracz[2]) * inputNaLiczby[1][x] ) / 10 )  ;
 
-                        if (!czyWartoscJestNaLiscie(mango67One,mango67Two) ) {
-                            gracz[0] += (float)sin(gracz[2]) * inputNaLiczby[1][x] ;
-                            gracz[1] += (float)cos(gracz[2]) * inputNaLiczby[1][x] ;
+                        double meow67One = gracz[0] + (float)sin(gracz[2]) * inputNaLiczby[1][x];
+                        double meow67Twoo = gracz[1] + (float)cos(gracz[2]) * inputNaLiczby[1][x];
+
+                        if (!(czyWartoscJestNaLiscie(mango67One,mango67Two)) && meow67One < rozdzielczosc*10 &&
+                            meow67One+meow67Twoo < rozdzielczosc*10 && meow67One > 0 && meow67Twoo > 0    ) {
+                            gracz[0] = meow67One;
+                            gracz[1] = meow67Twoo;
                             break;
                         }
                         else if (czyWartoscJestNaLiscie(mango67One,mango67Two) == 3 && czySmiercOdWrogow) {
                             turnOn = false;
                         }
-
                     }
                 }
                 for (char i = 0; i < 10; i++) {
@@ -473,7 +524,7 @@ void *renderowanie() {
     SDL_Quit();
 }
 
-void main() {
+int main() {
     srand(time(NULL));
 
     czySmiercOdWrogow = false;
@@ -482,15 +533,23 @@ void main() {
     for (int y = 0; y < rozdzielczosc; y++) { for (int x = 0; x < rozdzielczosc; x++) {  }}
     tablicaElementowNaPlanszy = (obiekt*) malloc( liczbaElementowNaCalejTablicy * sizeof(obiekt));
 
+    tablicaLiniWygladzanieKrawedzi = ( linia*) malloc(sizeof (linia   ) * liczbaWszystkichLini)  ;
+
+
+
 
     tablicaElementowNaPlanszy[1].y = 5;
     tablicaElementowNaPlanszy[1].x = 10;
     tablicaElementowNaPlanszy[1].type = 1;
+    tablicaElementowNaPlanszy[1].id = 1;
     for (unsigned char i = 0; i < 3; i++) {
         tablicaElementowNaPlanszy[i+2].y = 15;
         tablicaElementowNaPlanszy[i+2].x = (float)i +  9;
         tablicaElementowNaPlanszy[i+2].type = 1;
+        tablicaElementowNaPlanszy[i + 2].id = 2 + i;
     }
+
+    id = 4;
 
     pthread_t matematyka;
     pthread_t wyswietlanie;
@@ -502,5 +561,7 @@ void main() {
     pthread_detach(wyswietlanie);
     while (turnOn) { SDL_Delay(250);  }
     free(tablicaElementowNaPlanszy);
+    free( tablicaLiniWygladzanieKrawedzi);
+    return 67;
 
 }
